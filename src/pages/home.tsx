@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import exercisesData from '../data/exercises.json'
+import { FileLoader } from '../data/load'
 import { Exercise } from '../data/types'
 
 export const Home = new Hono()
@@ -59,10 +59,11 @@ const ExerciseCard = ({ exercise }: { exercise: Exercise }) => {
   )
 }
 
-Home.get('/', (c) => {
+Home.get('/', async (c) => {
   const query = c.req.query('q')?.toLowerCase() || ''
   const limit = 24
-  const filteredExercises = (exercisesData as Exercise[])
+  const exercisesData = await FileLoader.loadExercises()
+  const filteredExercises = exercisesData
     .filter((ex) => !query || ex.name.toLowerCase().includes(query) || ex.targetMuscles.some((m) => m.includes(query)))
 
   const initialExercises = filteredExercises.slice(0, limit)
@@ -242,12 +243,13 @@ Home.get('/', (c) => {
   )
 })
 
-Home.get('/api/exercises/list', (c) => {
+Home.get('/api/exercises/list', async (c) => {
   const query = c.req.query('q')?.toLowerCase() || ''
   const page = parseInt(c.req.query('page') || '1')
   const limit = parseInt(c.req.query('limit') || '24')
   
-  const filteredExercises = (exercisesData as Exercise[])
+  const exercisesData = await FileLoader.loadExercises()
+  const filteredExercises = exercisesData
     .filter((ex) => !query || ex.name.toLowerCase().includes(query) || ex.targetMuscles.some((m) => m.includes(query)))
   
   const start = (page - 1) * limit
