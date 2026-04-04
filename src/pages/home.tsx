@@ -4,6 +4,34 @@ import { Exercise } from '../data/types'
 
 export const Home = new Hono()
 
+const BodyVisualizer = () => {
+  return (
+    <div class="flex flex-col items-center space-y-4 bg-zinc-900/50 p-6 rounded-3xl border border-zinc-800">
+      <h2 class="text-xl font-bold text-zinc-100">Filtrar por Grupo Muscular</h2>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full">
+        {[
+          { id: 'abs', label: 'Abdominales' },
+          { id: 'biceps', label: 'Bíceps' },
+          { id: 'chest', label: 'Pecho' },
+          { id: 'back', label: 'Espalda' },
+          { id: 'glutes', label: 'Glúteos' },
+          { id: 'quads', label: 'Cuádriceps' },
+          { id: 'hamstrings', label: 'Isquios' },
+          { id: 'shoulders', label: 'Hombros' }
+        ].map((muscle) => (
+          <button
+            onclick={`window.filterByMuscle('${muscle.id}')`}
+            class="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white rounded-xl border border-zinc-700 transition-all text-sm font-medium focus:ring-2 focus:ring-zinc-500"
+          >
+            {muscle.label}
+          </button>
+        ))}
+      </div>
+      <p class="text-xs text-zinc-500 italic">Selecciona un grupo para filtrar instantáneamente</p>
+    </div>
+  )
+}
+
 export const Meteors = ({ number }: { number: number }) => {
   return (
     <>
@@ -64,7 +92,7 @@ Home.get('/', async (c) => {
   const limit = 24
   const exercisesData = await FileLoader.loadExercises()
   const filteredExercises = exercisesData
-    .filter((ex) => !query || ex.name.toLowerCase().includes(query) || ex.targetMuscles.some((m) => m.includes(query)))
+    .filter((ex) => !query || ex.name.toLowerCase().includes(query) || ex.targetMuscles.some((m) => m.toLowerCase().includes(query)))
 
   const initialExercises = filteredExercises.slice(0, limit)
   const hasMore = filteredExercises.length > limit
@@ -151,6 +179,7 @@ Home.get('/', async (c) => {
 
             <form method="get" action="/" class="w-full max-w-md relative group">
               <input
+                id="search-input"
                 type="text"
                 name="q"
                 value={query}
@@ -162,6 +191,10 @@ Home.get('/', async (c) => {
               </button>
             </form>
           </header>
+
+          <div class="relative z-10">
+            <BodyVisualizer />
+          </div>
 
           <div id="exercise-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 relative z-10">
             {initialExercises.map((exercise) => (
@@ -181,7 +214,7 @@ Home.get('/', async (c) => {
           </div>
 
           {filteredExercises.length === 0 && (
-            <div class="text-center py-20 bg-zinc-900/50 rounded-3xl border border-dashed border-zinc-800">
+            <div id="no-results" class="text-center py-20 bg-zinc-900/50 rounded-3xl border border-dashed border-zinc-800">
               <p class="text-zinc-500">No se encontraron ejercicios que coincidan con "{query}"</p>
             </div>
           )}
@@ -198,9 +231,15 @@ Home.get('/', async (c) => {
         <script dangerouslySetInnerHTML={{ __html: `
           let page = 1;
           const limit = ${limit};
-          const query = "${query}";
+          let query = "${query}";
           let loading = false;
           let hasMore = ${hasMore};
+
+          window.filterByMuscle = (muscle) => {
+            const input = document.getElementById('search-input');
+            input.value = muscle;
+            input.form.submit();
+          };
 
           const observer = new IntersectionObserver(async (entries) => {
             if (entries[0].isIntersecting && !loading && hasMore) {
@@ -250,7 +289,7 @@ Home.get('/api/exercises/list', async (c) => {
   
   const exercisesData = await FileLoader.loadExercises()
   const filteredExercises = exercisesData
-    .filter((ex) => !query || ex.name.toLowerCase().includes(query) || ex.targetMuscles.some((m) => m.includes(query)))
+    .filter((ex) => !query || ex.name.toLowerCase().includes(query) || ex.targetMuscles.some((m) => m.toLowerCase().includes(query)))
   
   const start = (page - 1) * limit
   const paginated = filteredExercises.slice(start, start + limit)
