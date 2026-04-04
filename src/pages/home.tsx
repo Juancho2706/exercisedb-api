@@ -8,35 +8,39 @@ const BodyVisualizer = () => {
   return (
     <div class="flex flex-col items-center space-y-4 bg-zinc-900/50 p-6 rounded-3xl border border-zinc-800">
       <div class="flex flex-col sm:flex-row justify-between items-center w-full gap-4">
-        <h2 class="text-xl font-bold text-zinc-100">Filtrar por Grupo Muscular</h2>
+        <h2 class="text-xl font-bold text-zinc-100">Filter by Target Muscle</h2>
         <button 
           onclick="window.exportFavorites()"
           id="export-btn"
           class="hidden px-4 py-2 bg-zinc-100 text-black rounded-full font-bold text-sm hover:bg-white transition-all shadow-lg shadow-white/5 active:scale-95"
         >
-          Exportar Favoritos (0)
+          Export Favorites (0)
         </button>
       </div>
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full">
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 w-full">
         {[
-          { id: 'abs', label: 'Abdominales' },
-          { id: 'biceps', label: 'Bíceps' },
-          { id: 'chest', label: 'Pecho' },
-          { id: 'back', label: 'Espalda' },
-          { id: 'glutes', label: 'Glúteos' },
-          { id: 'quads', label: 'Cuádriceps' },
-          { id: 'hamstrings', label: 'Isquios' },
-          { id: 'shoulders', label: 'Hombros' }
+          { id: 'abs', label: 'Abs' },
+          { id: 'biceps', label: 'Biceps' },
+          { id: 'triceps', label: 'Triceps' },
+          { id: 'chest', label: 'Chest' },
+          { id: 'back', label: 'Back' },
+          { id: 'shoulders', label: 'Shoulders' },
+          { id: 'glutes', label: 'Glutes' },
+          { id: 'quads', label: 'Quads' },
+          { id: 'hamstrings', label: 'Hamstrings' },
+          { id: 'calves', label: 'Calves' },
+          { id: 'cardio', label: 'Cardio' },
+          { id: 'full body', label: 'Full Body' }
         ].map((muscle) => (
           <button
             onclick={`window.filterByMuscle('${muscle.id}')`}
-            class="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white rounded-xl border border-zinc-700 transition-all text-sm font-medium focus:ring-2 focus:ring-zinc-500"
+            class="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white rounded-xl border border-zinc-700 transition-all text-xs font-medium focus:ring-2 focus:ring-zinc-500 truncate"
           >
             {muscle.label}
           </button>
         ))}
       </div>
-      <p class="text-xs text-zinc-500 italic">Selecciona un grupo para filtrar o usa la estrella para guardar ejercicios</p>
+      <p class="text-xs text-zinc-500 italic">Select a muscle group to filter or search for specific equipment/exercises</p>
     </div>
   )
 }
@@ -110,7 +114,7 @@ Home.get('/', async (c) => {
   const limit = 24
   const exercisesData = await FileLoader.loadExercises()
   const filteredExercises = exercisesData
-    .filter((ex) => !query || ex.name.toLowerCase().includes(query) || ex.targetMuscles.some((m) => m.toLowerCase().includes(query)))
+    .filter((ex) => !query || ex.name.toLowerCase().includes(query) || ex.targetMuscles.some((m) => m.toLowerCase().includes(query)) || ex.bodyParts.some((b) => b.toLowerCase().includes(query)))
 
   const initialExercises = filteredExercises.slice(0, limit)
   const hasMore = filteredExercises.length > limit
@@ -195,8 +199,7 @@ Home.get('/', async (c) => {
               ExerciseDB Explorer
             </h1>
             <p class="text-zinc-500 max-w-2xl text-lg">
-              Explora nuestra base de datos con más de 1,300 ejercicios. Visualiza técnicas, músculos y obtén la data
-              estructurada en JSON instantáneamente.
+              Explore our database with over 1,300+ exercises. Visualize techniques, muscles and get structured JSON data instantly.
             </p>
 
             <form method="get" action="/" class="w-full max-w-md relative group">
@@ -205,11 +208,11 @@ Home.get('/', async (c) => {
                 type="text"
                 name="q"
                 value={query}
-                placeholder="Busca ejercicios o músculos..."
+                placeholder="Search exercises, muscles or body parts..."
                 class="w-full bg-zinc-900 border border-zinc-800 rounded-full py-4 px-6 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-700 transition-all group-hover:border-zinc-700"
               />
               <button type="submit" class="absolute right-3 top-2 bottom-2 px-6 bg-zinc-100 text-black rounded-full font-bold text-sm hover:bg-white transition-colors">
-                Buscar
+                Search
               </button>
             </form>
           </header>
@@ -230,20 +233,20 @@ Home.get('/', async (c) => {
                  <div class="w-2 h-2 bg-zinc-500 rounded-full"></div>
                  <div class="w-2 h-2 bg-zinc-500 rounded-full"></div>
                  <div class="w-2 h-2 bg-zinc-500 rounded-full"></div>
-                 <span class="text-sm ml-2">Cargando más ejercicios...</span>
+                 <span class="text-sm ml-2">Loading more exercises...</span>
                </div>
              )}
           </div>
 
           {filteredExercises.length === 0 && (
             <div id="no-results" class="text-center py-20 bg-zinc-900/50 rounded-3xl border border-dashed border-zinc-800">
-              <p class="text-zinc-500">No se encontraron ejercicios que coincidan con "{query}"</p>
+              <p class="text-zinc-500">No exercises found for "{query}"</p>
             </div>
           )}
 
           <footer class="flex flex-col md:flex-row items-center justify-between pt-12 border-t border-zinc-900 gap-6">
             <div class="flex items-center space-x-4">
-              <a href="/docs" class="text-zinc-400 hover:text-white transition-colors text-sm font-medium">Documentación</a>
+              <a href="/docs" class="text-zinc-400 hover:text-white transition-colors text-sm font-medium">Documentation</a>
               <a href="https://github.com/exercisedb/exercisedb-api" class="text-zinc-400 hover:text-white transition-colors text-sm font-medium">GitHub</a>
             </div>
             <p class="text-zinc-600 text-xs">ExerciseDB API - Open Source Project</p>
@@ -263,7 +266,7 @@ Home.get('/', async (c) => {
             const count = Object.keys(favorites).length;
             if (count > 0) {
               btn.classList.remove('hidden');
-              btn.innerText = \`Exportar Favoritos (\${count})\`;
+              btn.innerText = \`Export Favorites (\${count})\`;
             } else {
               btn.classList.add('hidden');
             }
@@ -296,22 +299,22 @@ Home.get('/', async (c) => {
             if (favList.length === 0) return;
 
             const grouped = favList.reduce((acc, ex) => {
-              const muscle = ex.targetMuscles[0] || 'Otros';
+              const muscle = ex.targetMuscles[0] || 'Other';
               if (!acc[muscle]) acc[muscle] = [];
               acc[muscle].push(ex.name);
               return acc;
             }, {});
 
-            let text = "🏋️ MI RUTINA DE EJERCICIOS\\n\\n";
+            let text = "🏋️ MY WORKOUT ROUTINE\\n\\n";
             for (const [muscle, exercises] of Object.entries(grouped)) {
               text += \`🔹 \${muscle.toUpperCase()}:\\n\`;
               exercises.forEach(name => text += \`  • \${name}\\n\`);
               text += "\\n";
             }
-            text += "Enviado desde ExerciseDB Explorer";
+            text += "Shared from ExerciseDB Explorer";
 
             navigator.clipboard.writeText(text).then(() => {
-              alert("¡Lista copiada al portapapeles! 🎉\\n\\nPuedes pegarla en WhatsApp o cualquier chat para compartirla con tus amigos.");
+              alert("Routine copied to clipboard! 🎉\\n\\nYou can paste it in WhatsApp or any chat to share with friends.");
             });
           };
 
@@ -351,7 +354,7 @@ Home.get('/', async (c) => {
                 });
 
                 if (!hasMore) {
-                  document.getElementById('loading-trigger').innerHTML = '<p class="text-zinc-600 text-sm">Has llegado al final</p>';
+                  document.getElementById('loading-trigger').innerHTML = '<p class="text-zinc-600 text-sm">End of results</p>';
                 }
               } catch (err) {
                 console.error('Error loading more exercises:', err);
@@ -382,7 +385,7 @@ Home.get('/api/exercises/list', async (c) => {
   
   const exercisesData = await FileLoader.loadExercises()
   const filteredExercises = exercisesData
-    .filter((ex) => !query || ex.name.toLowerCase().includes(query) || ex.targetMuscles.some((m) => m.toLowerCase().includes(query)))
+    .filter((ex) => !query || ex.name.toLowerCase().includes(query) || ex.targetMuscles.some((m) => m.toLowerCase().includes(query)) || ex.bodyParts.some((b) => b.toLowerCase().includes(query)))
   
   const start = (page - 1) * limit
   const paginated = filteredExercises.slice(start, start + limit)
