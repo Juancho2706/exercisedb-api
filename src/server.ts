@@ -1,3 +1,4 @@
+import { serve } from '@hono/node-server'
 import { BodyPartController, EquipmentController, ExerciseController, MuscleController } from './modules'
 import { App } from './app'
 
@@ -8,7 +9,9 @@ const app = new App([
   new BodyPartController()
 ]).getApp()
 
-export default {
+serve({
   fetch: app.fetch,
-  port: 80
-}
+  port: Number(process.env.PORT) || 3001
+}, (info) => {
+  console.log(`\n🚀 Servidor listo en http://localhost:${info.port}`)
+})

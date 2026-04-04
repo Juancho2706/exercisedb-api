@@ -1,6 +1,6 @@
 export interface RedisRepositoryInterface {
-  get(prefix: string, key: string): Promise<string | null>
-  set(prefix: string, key: string, value: string): Promise<void>
-  delete(prefix: string, key: string): Promise<void>
-  setWithExpiry(prefix: string, key: string, value: string, expiry: number): Promise<void>
+  get(_prefix: string, _key: string): Promise<string | null>
+  set(_prefix: string, _key: string, _value: string): Promise<void>
+  delete(_prefix: string, _key: string): Promise<void>
+  setWithExpiry(_prefix: string, _key: string, _value: string, _expiry: number): Promise<void>
 }

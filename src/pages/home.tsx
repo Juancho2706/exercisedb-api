@@ -1,4 +1,6 @@
 import { Hono } from 'hono'
+import exercisesData from '../data/exercises.json'
+import { Exercise } from '../data/types'
 
 export const Home = new Hono()
 
@@ -21,8 +23,52 @@ export const Meteors = ({ number }: { number: number }) => {
   )
 }
 
+const ExerciseCard = ({ exercise }: { exercise: Exercise }) => {
+  return (
+    <div class="p-4 bg-zinc-900 border border-zinc-800 rounded-xl flex flex-col space-y-3 hover:border-zinc-700 transition-colors group">
+      <div class="relative aspect-square overflow-hidden rounded-lg bg-zinc-800">
+        <img
+          src={exercise.gifUrl}
+          alt={exercise.name}
+          class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          loading="lazy"
+        />
+      </div>
+      <div class="flex flex-col flex-grow">
+        <h3 class="text-zinc-100 font-bold text-lg capitalize line-clamp-1">{exercise.name}</h3>
+        <div class="flex flex-wrap gap-1 mt-2">
+          {exercise.bodyParts.map((part) => (
+            <span class="text-[10px] uppercase bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded-full font-bold">
+              {part}
+            </span>
+          ))}
+          {exercise.targetMuscles.map((muscle) => (
+            <span class="text-[10px] uppercase bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded-full font-bold">
+              {muscle}
+            </span>
+          ))}
+        </div>
+      </div>
+      <div class="mt-auto pt-3 border-t border-zinc-800">
+        <p class="text-[10px] text-zinc-500 font-mono mb-1 uppercase tracking-wider">JSON Path</p>
+        <pre class="text-[10px] bg-black p-2 rounded overflow-x-auto text-zinc-400 font-mono">
+          {JSON.stringify(exercise, null, 2)}
+        </pre>
+      </div>
+    </div>
+  )
+}
+
 Home.get('/', (c) => {
-  const title = 'ExerciseDB API'
+  const query = c.req.query('q')?.toLowerCase() || ''
+  const limit = 24
+  const filteredExercises = (exercisesData as Exercise[])
+    .filter((ex) => !query || ex.name.toLowerCase().includes(query) || ex.targetMuscles.some((m) => m.includes(query)))
+
+  const initialExercises = filteredExercises.slice(0, limit)
+  const hasMore = filteredExercises.length > limit
+
+  const title = 'ExerciseDB Explorer'
   const description =
     'Access detailed data on over 1300+ exercises with the ExerciseDB API. This API offers extensive information on each exercise, including target body parts, equipment needed, GIFs for visual guidance, and step-by-step instructions.'
   const keywords =
@@ -31,7 +77,7 @@ Home.get('/', (c) => {
   return c.html(
     <html>
       <head>
-        <title>ExerciseDB API</title>
+        <title>ExerciseDB Explorer</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta charset="utf-8" />
         <meta name="description" content={description} />
@@ -89,96 +135,155 @@ Home.get('/', (c) => {
           }}
         />
       </head>{' '}
-      <body class="bg-black mx-auto md:min-h-screen max-w-screen-lg flex flex-col">
-        <main class="mx-auto my-auto flex flex-col space-y-8 px-4 pb-8 md:py-10 relative overflow-y-hidden overflow-x-hidden">
+      <body class="bg-black mx-auto md:min-h-screen max-w-screen-xl flex flex-col">
+        <main class="mx-auto my-auto flex flex-col space-y-12 px-6 pb-20 md:py-16 relative overflow-x-hidden">
           <Meteors number={15} />
-          <div class="flex flex-row items-center space-x-4 ml-6">
-            <p class="text-2xl md:text-4xl text-transparent font-bold leading-none bg-clip-text bg-gradient-to-r from-gray-300 via-gray-500 to-gray-100">
-              ExerciseDB API
+
+          <header class="flex flex-col items-center text-center space-y-6 relative z-10">
+            <h1 class="text-4xl md:text-6xl text-transparent font-extrabold leading-tight bg-clip-text bg-gradient-to-r from-zinc-100 via-zinc-400 to-zinc-600">
+              ExerciseDB Explorer
+            </h1>
+            <p class="text-zinc-500 max-w-2xl text-lg">
+              Explora nuestra base de datos con más de 1,300 ejercicios. Visualiza técnicas, músculos y obtén la data
+              estructurada en JSON instantáneamente.
             </p>
+
+            <form method="get" action="/" class="w-full max-w-md relative group">
+              <input
+                type="text"
+                name="q"
+                value={query}
+                placeholder="Busca ejercicios o músculos..."
+                class="w-full bg-zinc-900 border border-zinc-800 rounded-full py-4 px-6 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-700 transition-all group-hover:border-zinc-700"
+              />
+              <button type="submit" class="absolute right-3 top-2 bottom-2 px-6 bg-zinc-100 text-black rounded-full font-bold text-sm hover:bg-white transition-colors">
+                Buscar
+              </button>
+            </form>
+          </header>
+
+          <div id="exercise-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 relative z-10">
+            {initialExercises.map((exercise) => (
+              <ExerciseCard exercise={exercise} />
+            ))}
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-2 sm:gap-0 relative grid-flow-row">
-            <a
-              target="_blank"
-              class="p-4 sm:p-8 hover:bg-opacity-5 hover:bg-white rounded-lg duration-100 sm:col-span-4"
-              href="/docs"
-            >
-              <div class="flex flex-col">
-                <span class="text-xs uppercase bg-opacity-15 rounded text-center max-w-fit px-2 py-1 font-bold tracking-wide bg-red-500 text-red-500">
-                  Get Started
-                </span>
-                <span class="text-neutral-200 font-bold text-lg sm:text-xl md:text-2xl mt-2">Explore the Docs</span>
-                <div class="text-neutral-500 mt-2">
-                  Check out the documentation to learn how to use the ExerciseDB API.
-                </div>
-              </div>
-            </a>
+          <div id="loading-trigger" class="h-20 flex items-center justify-center relative z-10">
+             {hasMore && (
+               <div class="flex items-center space-x-2 text-zinc-500 animate-pulse">
+                 <div class="w-2 h-2 bg-zinc-500 rounded-full"></div>
+                 <div class="w-2 h-2 bg-zinc-500 rounded-full"></div>
+                 <div class="w-2 h-2 bg-zinc-500 rounded-full"></div>
+                 <span class="text-sm ml-2">Cargando más ejercicios...</span>
+               </div>
+             )}
+          </div>
 
-            <a
-              target="_blank"
-              class="p-4 sm:p-8 hover:bg-opacity-5 hover:bg-white rounded-lg duration-100 sm:col-span-4"
-              href="https://github.com/exercisedb/exercisedb-api"
-            >
-              <div class="flex flex-col">
-                <span class="text-xs uppercase bg-opacity-15 rounded text-center max-w-fit px-2 py-1 font-bold tracking-wide bg-green-500 text-green-500">
-                  Open Source
-                </span>
-                <span class="text-neutral-200 font-bold text-lg sm:text-xl md:text-2xl mt-2">Open Source</span>
-                <div class="text-neutral-500 mt-2">
-                  ExerciseDB API is open-source. Check out the source code on github.
-                </div>
-              </div>
-            </a>
-
-            <a
-              target="_blank"
-              class="p-4 sm:p-8 hover:bg-opacity-5 hover:bg-white rounded-lg duration-100 sm:col-span-4"
-              href="https://github.com/exercisedb/exercisedb-api/issues"
-            >
-              <div class="flex flex-col">
-                <span class="text-xs uppercase bg-opacity-15 rounded text-center max-w-fit px-2 py-1 font-bold tracking-wide bg-violet-500 text-violet-500">
-                  Contribute
-                </span>
-                <span class="text-neutral-200 font-bold text-lg sm:text-xl md:text-2xl mt-2">Get Involved</span>
-                <div class="text-neutral-500 mt-2">
-                  Encounter a bug or have a feature suggestion? Report it on GitHub or contribute by submitting a pull
-                  request.
-                </div>
-              </div>
-            </a>
-
-            <div class="p-4 sm:p-8 hover:bg-opacity-5 hover:bg-white rounded-lg duration-100 sm:col-span-4">
-              <div class="flex flex-col">
-                <span class="text-xs uppercase bg-opacity-15 rounded text-center max-w-fit px-2 py-1 font-bold tracking-wide bg-blue-500 text-blue-500">
-                  Contact
-                </span>
-                <span class="text-neutral-200 font-bold text-lg sm:text-xl md:text-2xl mt-2">ExerciseDB API</span>
-                <div class="text-neutral-500 mt-2">
-                  Have a question or need help? Reach out on{' '}
-                  <a
-                    href="mailto:hello@exercisedb.dev"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:underline text-indigo-500"
-                  >
-                    hello@exercisedb.dev
-                  </a>
-                  ,{' '}
-                  <a
-                    href="https://t.me/exercisedb"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:underline text-green-500"
-                  >
-                    Chat With Us.
-                  </a>
-                </div>
-              </div>
+          {filteredExercises.length === 0 && (
+            <div class="text-center py-20 bg-zinc-900/50 rounded-3xl border border-dashed border-zinc-800">
+              <p class="text-zinc-500">No se encontraron ejercicios que coincidan con "{query}"</p>
             </div>
-          </div>
+          )}
+
+          <footer class="flex flex-col md:flex-row items-center justify-between pt-12 border-t border-zinc-900 gap-6">
+            <div class="flex items-center space-x-4">
+              <a href="/docs" class="text-zinc-400 hover:text-white transition-colors text-sm font-medium">Documentación</a>
+              <a href="https://github.com/exercisedb/exercisedb-api" class="text-zinc-400 hover:text-white transition-colors text-sm font-medium">GitHub</a>
+            </div>
+            <p class="text-zinc-600 text-xs">ExerciseDB API - Open Source Project</p>
+          </footer>
         </main>
+
+        <script dangerouslySetInnerHTML={{ __html: `
+          let page = 1;
+          const limit = ${limit};
+          const query = "${query}";
+          let loading = false;
+          let hasMore = ${hasMore};
+
+          const observer = new IntersectionObserver(async (entries) => {
+            if (entries[0].isIntersecting && !loading && hasMore) {
+              loading = true;
+              page++;
+              
+              try {
+                const res = await fetch(\`/api/exercises/list?page=\${page}&limit=\${limit}&q=\${query}\`);
+                const data = await res.json();
+                
+                if (data.exercises.length < limit) hasMore = false;
+                if (data.exercises.length === 0) {
+                  document.getElementById('loading-trigger').style.display = 'none';
+                  return;
+                }
+
+                const grid = document.getElementById('exercise-grid');
+                data.html.forEach(html => {
+                  const div = document.createElement('div');
+                  div.innerHTML = html;
+                  grid.appendChild(div.firstElementChild);
+                });
+
+                if (!hasMore) {
+                  document.getElementById('loading-trigger').innerHTML = '<p class="text-zinc-600 text-sm">Has llegado al final</p>';
+                }
+              } catch (err) {
+                console.error('Error loading more exercises:', err);
+              } finally {
+                loading = false;
+              }
+            }
+          }, { threshold: 0.1 });
+
+          const trigger = document.getElementById('loading-trigger');
+          if (trigger) observer.observe(trigger);
+        `}} />
       </body>
     </html>
   )
+})
+
+Home.get('/api/exercises/list', (c) => {
+  const query = c.req.query('q')?.toLowerCase() || ''
+  const page = parseInt(c.req.query('page') || '1')
+  const limit = parseInt(c.req.query('limit') || '24')
+  
+  const filteredExercises = (exercisesData as Exercise[])
+    .filter((ex) => !query || ex.name.toLowerCase().includes(query) || ex.targetMuscles.some((m) => m.includes(query)))
+  
+  const start = (page - 1) * limit
+  const paginated = filteredExercises.slice(start, start + limit)
+
+  const htmlCards = paginated.map(ex => `
+    <div class="p-4 bg-zinc-900 border border-zinc-800 rounded-xl flex flex-col space-y-3 hover:border-zinc-700 transition-colors group">
+      <div class="relative aspect-square overflow-hidden rounded-lg bg-zinc-800">
+        <img
+          src="${ex.gifUrl}"
+          alt="${ex.name}"
+          class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          loading="lazy"
+        />
+      </div>
+      <div class="flex flex-col flex-grow">
+        <h3 class="text-zinc-100 font-bold text-lg capitalize line-clamp-1">${ex.name}</h3>
+        <div class="flex flex-wrap gap-1 mt-2">
+          ${ex.bodyParts.map(part => `
+            <span class="text-[10px] uppercase bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded-full font-bold">
+              ${part}
+            </span>
+          `).join('')}
+          ${ex.targetMuscles.map(muscle => `
+            <span class="text-[10px] uppercase bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded-full font-bold">
+              ${muscle}
+            </span>
+          `).join('')}
+        </div>
+      </div>
+      <div class="mt-auto pt-3 border-t border-zinc-800">
+        <p class="text-[10px] text-zinc-500 font-mono mb-1 uppercase tracking-wider">JSON Path</p>
+        <pre class="text-[10px] bg-black p-2 rounded overflow-x-auto text-zinc-400 font-mono">${JSON.stringify(ex, null, 2)}</pre>
+      </div>
+    </div>
+  `)
+
+  return c.json({ exercises: paginated, html: htmlCards })
 })
