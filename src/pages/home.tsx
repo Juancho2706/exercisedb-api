@@ -7,7 +7,16 @@ export const Home = new Hono()
 const BodyVisualizer = () => {
   return (
     <div class="flex flex-col items-center space-y-4 bg-zinc-900/50 p-6 rounded-3xl border border-zinc-800">
-      <h2 class="text-xl font-bold text-zinc-100">Filtrar por Grupo Muscular</h2>
+      <div class="flex flex-col sm:flex-row justify-between items-center w-full gap-4">
+        <h2 class="text-xl font-bold text-zinc-100">Filtrar por Grupo Muscular</h2>
+        <button 
+          onclick="window.exportFavorites()"
+          id="export-btn"
+          class="hidden px-4 py-2 bg-zinc-100 text-black rounded-full font-bold text-sm hover:bg-white transition-all shadow-lg shadow-white/5 active:scale-95"
+        >
+          Exportar Favoritos (0)
+        </button>
+      </div>
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full">
         {[
           { id: 'abs', label: 'Abdominales' },
@@ -27,7 +36,7 @@ const BodyVisualizer = () => {
           </button>
         ))}
       </div>
-      <p class="text-xs text-zinc-500 italic">Selecciona un grupo para filtrar instantáneamente</p>
+      <p class="text-xs text-zinc-500 italic">Selecciona un grupo para filtrar o usa la estrella para guardar ejercicios</p>
     </div>
   )
 }
@@ -53,7 +62,16 @@ export const Meteors = ({ number }: { number: number }) => {
 
 const ExerciseCard = ({ exercise }: { exercise: Exercise }) => {
   return (
-    <div class="p-4 bg-zinc-900 border border-zinc-800 rounded-xl flex flex-col space-y-3 hover:border-zinc-700 transition-colors group">
+    <div id={`exercise-${exercise.exerciseId}`} class="p-4 bg-zinc-900 border border-zinc-800 rounded-xl flex flex-col space-y-3 hover:border-zinc-700 transition-colors group relative">
+      <button 
+        onclick={`window.toggleFavorite('${exercise.exerciseId}', ${JSON.stringify(exercise).replace(/"/g, '"')})`}
+        class="favorite-btn absolute top-6 right-6 z-20 p-2 bg-black/50 backdrop-blur-md rounded-full border border-zinc-700 text-zinc-400 hover:text-yellow-500 transition-colors"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="star-icon">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+        </svg>
+      </button>
+
       <div class="relative aspect-square overflow-hidden rounded-lg bg-zinc-800">
         <img
           src={exercise.gifUrl}
@@ -160,6 +178,10 @@ Home.get('/', async (c) => {
             }
             .animate-meteor-effect {
               animation-name: meteorAnimation;
+            }
+            .is-favorite .star-icon {
+              fill: #eab308;
+              stroke: #eab308;
             }`
           }}
         />
@@ -234,6 +256,64 @@ Home.get('/', async (c) => {
           let query = "${query}";
           let loading = false;
           let hasMore = ${hasMore};
+          let favorites = JSON.parse(localStorage.getItem('exercisedb_favs') || '{}');
+
+          const updateExportButton = () => {
+            const btn = document.getElementById('export-btn');
+            const count = Object.keys(favorites).length;
+            if (count > 0) {
+              btn.classList.remove('hidden');
+              btn.innerText = \`Exportar Favoritos (\${count})\`;
+            } else {
+              btn.classList.add('hidden');
+            }
+          };
+
+          const updateStarUI = (id) => {
+            const card = document.getElementById(\`exercise-\${id}\`);
+            if (!card) return;
+            const btn = card.querySelector('.favorite-btn');
+            if (favorites[id]) {
+              btn.classList.add('is-favorite');
+            } else {
+              btn.classList.remove('is-favorite');
+            }
+          };
+
+          window.toggleFavorite = (id, exercise) => {
+            if (favorites[id]) {
+              delete favorites[id];
+            } else {
+              favorites[id] = exercise;
+            }
+            localStorage.setItem('exercisedb_favs', JSON.stringify(favorites));
+            updateStarUI(id);
+            updateExportButton();
+          };
+
+          window.exportFavorites = () => {
+            const favList = Object.values(favorites);
+            if (favList.length === 0) return;
+
+            const grouped = favList.reduce((acc, ex) => {
+              const muscle = ex.targetMuscles[0] || 'Otros';
+              if (!acc[muscle]) acc[muscle] = [];
+              acc[muscle].push(ex.name);
+              return acc;
+            }, {});
+
+            let text = "🏋️ MI RUTINA DE EJERCICIOS\\n\\n";
+            for (const [muscle, exercises] of Object.entries(grouped)) {
+              text += \`🔹 \${muscle.toUpperCase()}:\\n\`;
+              exercises.forEach(name => text += \`  • \${name}\\n\`);
+              text += "\\n";
+            }
+            text += "Enviado desde ExerciseDB Explorer";
+
+            navigator.clipboard.writeText(text).then(() => {
+              alert("¡Lista copiada al portapapeles! 🎉\\n\\nPuedes pegarla en WhatsApp o cualquier chat para compartirla con tus amigos.");
+            });
+          };
 
           window.filterByMuscle = (muscle) => {
             const input = document.getElementById('search-input');
@@ -257,10 +337,17 @@ Home.get('/', async (c) => {
                 }
 
                 const grid = document.getElementById('exercise-grid');
-                data.html.forEach(html => {
+                data.html.forEach((html, index) => {
                   const div = document.createElement('div');
                   div.innerHTML = html;
-                  grid.appendChild(div.firstElementChild);
+                  const newCard = div.firstElementChild;
+                  grid.appendChild(newCard);
+                  
+                  // Actualizar estrella para la nueva card
+                  const exId = data.exercises[index].exerciseId;
+                  if (favorites[exId]) {
+                    newCard.querySelector('.favorite-btn').classList.add('is-favorite');
+                  }
                 });
 
                 if (!hasMore) {
@@ -276,6 +363,12 @@ Home.get('/', async (c) => {
 
           const trigger = document.getElementById('loading-trigger');
           if (trigger) observer.observe(trigger);
+
+          // Ejecutar chequeo inicial
+          setTimeout(() => {
+            Object.keys(favorites).forEach(id => updateStarUI(id));
+            updateExportButton();
+          }, 100);
         `}} />
       </body>
     </html>
@@ -295,7 +388,15 @@ Home.get('/api/exercises/list', async (c) => {
   const paginated = filteredExercises.slice(start, start + limit)
 
   const htmlCards = paginated.map(ex => `
-    <div class="p-4 bg-zinc-900 border border-zinc-800 rounded-xl flex flex-col space-y-3 hover:border-zinc-700 transition-colors group">
+    <div id="exercise-${ex.exerciseId}" class="p-4 bg-zinc-900 border border-zinc-800 rounded-xl flex flex-col space-y-3 hover:border-zinc-700 transition-colors group relative">
+      <button 
+        onclick="window.toggleFavorite('${ex.exerciseId}', ${JSON.stringify(ex).replace(/"/g, '"')})"
+        class="favorite-btn absolute top-6 right-6 z-20 p-2 bg-black/50 backdrop-blur-md rounded-full border border-zinc-700 text-zinc-400 hover:text-yellow-500 transition-colors"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="star-icon">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+        </svg>
+      </button>
       <div class="relative aspect-square overflow-hidden rounded-lg bg-zinc-800">
         <img
           src="${ex.gifUrl}"
