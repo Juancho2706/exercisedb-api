@@ -88,7 +88,7 @@ const ExerciseCard = ({ exercise, index }: { exercise: Exercise, index: number }
 
       <div class="relative aspect-square overflow-hidden rounded-lg bg-zinc-800">
         <img
-          src={exercise.gifUrl}
+          src={exercise.gifUrl.endsWith('.gif') ? exercise.gifUrl : `${exercise.gifUrl}.gif`}
           alt={exercise.name}
           class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           loading="lazy"
@@ -359,7 +359,7 @@ Home.get('/', async (c) => {
 
             list.innerHTML = favs.map(ex => (
               '<div class="flex items-center space-x-4 p-3 bg-zinc-900/50 rounded-2xl border border-zinc-900 group">' +
-                '<img src="' + ex.gifUrl + '" class="w-16 h-16 rounded-lg object-cover bg-zinc-800" />' +
+                '<img src="' + (ex.gifUrl.endsWith('.gif') ? ex.gifUrl : ex.gifUrl + '.gif') + '" class="w-16 h-16 rounded-lg object-cover bg-zinc-800" />' +
                 '<div class="flex-grow min-w-0">' +
                   '<h4 class="text-white font-bold text-sm capitalize truncate">' + ex.name + '</h4>' +
                   '<p class="text-zinc-500 text-[10px] uppercase font-bold tracking-wider">' + (ex.targetMuscles[0] || '') + '</p>' +
