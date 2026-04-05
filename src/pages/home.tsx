@@ -71,11 +71,14 @@ export const Meteors = ({ number }: { number: number }) => {
   )
 }
 
-const ExerciseCard = ({ exercise }: { exercise: Exercise }) => {
+const ExerciseCard = ({ exercise, index }: { exercise: Exercise, index: number }) => {
   return (
     <div id={`exercise-${exercise.exerciseId}`} class="p-4 bg-zinc-900 border border-zinc-800 rounded-xl flex flex-col space-y-3 hover:border-zinc-700 transition-colors group relative">
+      <div class="absolute top-6 left-6 z-20 px-2.5 py-1 bg-black/70 backdrop-blur-md rounded-lg border border-zinc-700 text-zinc-300 text-xs font-bold font-mono">
+        #{index}
+      </div>
       <button 
-        onclick={`window.toggleFavorite('${exercise.exerciseId}', ${JSON.stringify(exercise).replace(/"/g, '&quot;')})`}
+        onclick={`window.toggleFavorite('${exercise.exerciseId}', ${JSON.stringify(exercise).replace(/"/g, '"')})`}
         class="favorite-btn absolute top-6 right-6 z-20 p-2 bg-black/50 backdrop-blur-md rounded-full border border-zinc-700 text-zinc-400 hover:text-yellow-500 transition-colors"
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="star-icon">
@@ -116,15 +119,41 @@ const ExerciseCard = ({ exercise }: { exercise: Exercise }) => {
   )
 }
 
+const Pagination = ({ page, totalPages, query }: { page: number, totalPages: number, query: string }) => {
+  const createUrl = (p: number) => `/?page=${p}${query ? `&q=${encodeURIComponent(query)}` : ''}`
+  return (
+    <div class="flex items-center justify-center space-x-2 my-8 z-10 relative">
+      {page > 1 ? (
+        <a href={createUrl(page - 1)} class="px-4 py-2 bg-zinc-800 text-white border border-zinc-700 rounded-lg hover:bg-zinc-700 transition-colors font-medium text-sm">Previous</a>
+      ) : (
+        <button disabled class="px-4 py-2 bg-zinc-900 border border-zinc-800 text-zinc-600 rounded-lg cursor-not-allowed font-medium text-sm">Previous</button>
+      )}
+      
+      <span class="text-zinc-400 mx-4 text-sm font-medium">Page <span class="text-white">{page}</span> of {totalPages}</span>
+      
+      {page < totalPages ? (
+        <a href={createUrl(page + 1)} class="px-4 py-2 bg-zinc-800 text-white border border-zinc-700 rounded-lg hover:bg-zinc-700 transition-colors font-medium text-sm">Next</a>
+      ) : (
+        <button disabled class="px-4 py-2 bg-zinc-900 border border-zinc-800 text-zinc-600 rounded-lg cursor-not-allowed font-medium text-sm">Next</button>
+      )}
+    </div>
+  )
+}
+
 Home.get('/', async (c) => {
   const query = c.req.query('q')?.toLowerCase() || ''
-  const limit = 24
+  const page = Math.max(1, parseInt(c.req.query('page') || '1') || 1)
+  const limit = 50
+  
   const exercisesData = await FileLoader.loadExercises()
   const filteredExercises = exercisesData
     .filter((ex) => !query || ex.name.toLowerCase().includes(query) || ex.targetMuscles.some((m) => m.toLowerCase().includes(query)) || ex.bodyParts.some((b) => b.toLowerCase().includes(query)))
 
-  const initialExercises = filteredExercises.slice(0, limit)
-  const hasMore = filteredExercises.length > limit
+  const totalPages = Math.ceil(filteredExercises.length / limit)
+  const validPage = Math.min(page, Math.max(1, totalPages))
+  
+  const start = (validPage - 1) * limit
+  const paginatedExercises = filteredExercises.slice(start, start + limit)
 
   const title = 'ExerciseDB Explorer'
   const description =
@@ -228,25 +257,18 @@ Home.get('/', async (c) => {
             <BodyVisualizer />
           </div>
 
+          {totalPages > 0 && <Pagination page={validPage} totalPages={totalPages} query={query} />}
+
           <div id="exercise-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 relative z-20">
-            {initialExercises.map((exercise) => (
-              <ExerciseCard exercise={exercise} />
+            {paginatedExercises.map((exercise, i) => (
+              <ExerciseCard exercise={exercise} index={start + i + 1} />
             ))}
           </div>
 
-          <div id="loading-trigger" class="h-20 flex items-center justify-center relative z-0">
-             {hasMore && (
-               <div class="flex items-center space-x-2 text-zinc-500 animate-pulse">
-                 <div class="w-2 h-2 bg-zinc-500 rounded-full"></div>
-                 <div class="w-2 h-2 bg-zinc-500 rounded-full"></div>
-                 <div class="w-2 h-2 bg-zinc-500 rounded-full"></div>
-                 <span class="text-sm ml-2">Loading more exercises...</span>
-               </div>
-             )}
-          </div>
+          {totalPages > 0 && <Pagination page={validPage} totalPages={totalPages} query={query} />}
 
           {filteredExercises.length === 0 && (
-            <div id="no-results" class="text-center py-20 bg-zinc-900/50 rounded-3xl border border-dashed border-zinc-800">
+            <div id="no-results" class="text-center py-20 bg-zinc-900/50 rounded-3xl border border-dashed border-zinc-800 relative z-10">
               <p class="text-zinc-500">No exercises found for "{query}"</p>
             </div>
           )}
@@ -289,11 +311,7 @@ Home.get('/', async (c) => {
         </div>
 
         <script dangerouslySetInnerHTML={{ __html: `
-          let page = 1;
-          const limit = ${limit};
           let query = "${query}";
-          let loading = false;
-          let hasMore = ${hasMore};
           let favorites = JSON.parse(localStorage.getItem('exercisedb_favs') || '{}');
 
           const updateExportButton = () => {
@@ -405,49 +423,6 @@ Home.get('/', async (c) => {
             input.form.submit();
           };
 
-          const observer = new IntersectionObserver(async (entries) => {
-            if (entries[0].isIntersecting && !loading && hasMore) {
-              loading = true;
-              page++;
-              
-              try {
-                const res = await fetch(\`/api/exercises/list?page=\${page}&limit=\${limit}&q=\${query}\`);
-                const data = await res.json();
-                
-                if (data.exercises.length < limit) hasMore = false;
-                if (data.exercises.length === 0) {
-                  document.getElementById('loading-trigger').style.display = 'none';
-                  return;
-                }
-
-                const grid = document.getElementById('exercise-grid');
-                data.html.forEach((html, index) => {
-                  const div = document.createElement('div');
-                  div.innerHTML = html;
-                  const newCard = div.firstElementChild;
-                  grid.appendChild(newCard);
-                  
-                  // Actualizar estrella para la nueva card
-                  const exId = data.exercises[index].exerciseId;
-                  if (favorites[exId]) {
-                    newCard.querySelector('.favorite-btn').classList.add('is-favorite');
-                  }
-                });
-
-                if (!hasMore) {
-                  document.getElementById('loading-trigger').innerHTML = '<p class="text-zinc-600 text-sm">End of results</p>';
-                }
-              } catch (err) {
-                console.error('Error loading more exercises:', err);
-              } finally {
-                loading = false;
-              }
-            }
-          }, { threshold: 0.1 });
-
-          const trigger = document.getElementById('loading-trigger');
-          if (trigger) observer.observe(trigger);
-
           // Ejecutar chequeo inicial
           setTimeout(() => {
             Object.keys(favorites).forEach(id => updateStarUI(id));
@@ -457,59 +432,4 @@ Home.get('/', async (c) => {
       </body>
     </html>
   )
-})
-
-Home.get('/api/exercises/list', async (c) => {
-  const query = c.req.query('q')?.toLowerCase() || ''
-  const page = parseInt(c.req.query('page') || '1')
-  const limit = parseInt(c.req.query('limit') || '24')
-  
-  const exercisesData = await FileLoader.loadExercises()
-  const filteredExercises = exercisesData
-    .filter((ex) => !query || ex.name.toLowerCase().includes(query) || ex.targetMuscles.some((m) => m.toLowerCase().includes(query)) || ex.bodyParts.some((b) => b.toLowerCase().includes(query)))
-  
-  const start = (page - 1) * limit
-  const paginated = filteredExercises.slice(start, start + limit)
-
-  const htmlCards = paginated.map(ex => `
-    <div id="exercise-${ex.exerciseId}" class="p-4 bg-zinc-900 border border-zinc-800 rounded-xl flex flex-col space-y-3 hover:border-zinc-700 transition-colors group relative">
-      <button 
-        onclick="window.toggleFavorite('${ex.exerciseId}', ${JSON.stringify(ex).replace(/"/g, '&quot;')})"
-        class="favorite-btn absolute top-6 right-6 z-20 p-2 bg-black/50 backdrop-blur-md rounded-full border border-zinc-700 text-zinc-400 hover:text-yellow-500 transition-colors"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="star-icon">
-          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-        </svg>
-      </button>
-      <div class="relative aspect-square overflow-hidden rounded-lg bg-zinc-800">
-        <img
-          src="${ex.gifUrl}"
-          alt="${ex.name}"
-          class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          loading="lazy"
-        />
-      </div>
-      <div class="flex flex-col flex-grow">
-        <h3 class="text-zinc-100 font-bold text-lg capitalize line-clamp-1">${ex.name}</h3>
-        <div class="flex flex-wrap gap-1 mt-2">
-          ${ex.bodyParts.map(part => `
-            <span class="text-[10px] uppercase bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded-full font-bold">
-              ${part}
-            </span>
-          `).join('')}
-          ${ex.targetMuscles.map(muscle => `
-            <span class="text-[10px] uppercase bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded-full font-bold">
-              ${muscle}
-            </span>
-          `).join('')}
-        </div>
-      </div>
-      <div class="mt-auto pt-3 border-t border-zinc-800">
-        <p class="text-[10px] text-zinc-500 font-mono mb-1 uppercase tracking-wider">JSON Path</p>
-        <pre class="text-[10px] bg-black p-2 rounded overflow-x-auto text-zinc-400 font-mono">${JSON.stringify(ex, null, 2)}</pre>
-      </div>
-    </div>
-  `)
-
-  return c.json({ exercises: paginated, html: htmlCards })
 })
