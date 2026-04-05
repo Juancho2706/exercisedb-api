@@ -68,7 +68,7 @@ const ExerciseCard = ({ exercise }: { exercise: Exercise }) => {
   return (
     <div id={`exercise-${exercise.exerciseId}`} class="p-4 bg-zinc-900 border border-zinc-800 rounded-xl flex flex-col space-y-3 hover:border-zinc-700 transition-colors group relative">
       <button 
-        onclick={`window.toggleFavorite('${exercise.exerciseId}', ${JSON.stringify(exercise).replace(/"/g, '"')})`}
+        onclick={`window.toggleFavorite('${exercise.exerciseId}', ${JSON.stringify(exercise).replace(/"/g, '&quot;')})`}
         class="favorite-btn absolute top-6 right-6 z-20 p-2 bg-black/50 backdrop-blur-md rounded-full border border-zinc-700 text-zinc-400 hover:text-yellow-500 transition-colors"
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="star-icon">
@@ -221,13 +221,13 @@ Home.get('/', async (c) => {
             <BodyVisualizer />
           </div>
 
-          <div id="exercise-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 relative z-10">
+          <div id="exercise-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 relative z-20">
             {initialExercises.map((exercise) => (
               <ExerciseCard exercise={exercise} />
             ))}
           </div>
 
-          <div id="loading-trigger" class="h-20 flex items-center justify-center relative z-10">
+          <div id="loading-trigger" class="h-20 flex items-center justify-center relative z-0">
              {hasMore && (
                <div class="flex items-center space-x-2 text-zinc-500 animate-pulse">
                  <div class="w-2 h-2 bg-zinc-500 rounded-full"></div>
@@ -393,7 +393,7 @@ Home.get('/api/exercises/list', async (c) => {
   const htmlCards = paginated.map(ex => `
     <div id="exercise-${ex.exerciseId}" class="p-4 bg-zinc-900 border border-zinc-800 rounded-xl flex flex-col space-y-3 hover:border-zinc-700 transition-colors group relative">
       <button 
-        onclick="window.toggleFavorite('${ex.exerciseId}', ${JSON.stringify(ex).replace(/"/g, '"')})"
+        onclick="window.toggleFavorite('${ex.exerciseId}', ${JSON.stringify(ex).replace(/"/g, '&quot;')})"
         class="favorite-btn absolute top-6 right-6 z-20 p-2 bg-black/50 backdrop-blur-md rounded-full border border-zinc-700 text-zinc-400 hover:text-yellow-500 transition-colors"
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="star-icon">
