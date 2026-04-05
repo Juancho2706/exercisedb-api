@@ -129,7 +129,18 @@ const Pagination = ({ page, totalPages, query }: { page: number, totalPages: num
         <button disabled class="px-4 py-2 bg-zinc-900 border border-zinc-800 text-zinc-600 rounded-lg cursor-not-allowed font-medium text-sm">Previous</button>
       )}
       
-      <span class="text-zinc-400 mx-4 text-sm font-medium">Page <span class="text-white">{page}</span> of {totalPages}</span>
+      <div class="flex items-center space-x-2 mx-4 text-sm font-medium text-zinc-400">
+        <span>Page</span>
+        <input 
+          type="number" 
+          value={page}
+          min={1}
+          max={totalPages}
+          onkeydown={`window.handlePageJump(event, ${totalPages})`}
+          class="w-16 bg-zinc-900 border border-zinc-800 text-center text-white py-1 rounded-md focus:outline-none focus:border-zinc-500"
+        />
+        <span>of {totalPages}</span>
+      </div>
       
       {page < totalPages ? (
         <a href={createUrl(page + 1)} class="px-4 py-2 bg-zinc-800 text-white border border-zinc-700 rounded-lg hover:bg-zinc-700 transition-colors font-medium text-sm">Next</a>
@@ -222,6 +233,14 @@ Home.get('/', async (c) => {
             .is-favorite .star-icon {
               fill: #eab308;
               stroke: #eab308;
+            }
+            input[type=number]::-webkit-inner-spin-button, 
+            input[type=number]::-webkit-outer-spin-button { 
+              -webkit-appearance: none; 
+              margin: 0; 
+            }
+            input[type=number] {
+              -moz-appearance: textfield;
             }`
           }}
         />
@@ -421,6 +440,20 @@ Home.get('/', async (c) => {
             const input = document.getElementById('search-input');
             input.value = muscle;
             input.form.submit();
+          };
+
+          window.handlePageJump = (e, totalPages) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              let val = parseInt(e.target.value);
+              if (isNaN(val)) return;
+              if (val < 1) val = 1;
+              if (val > totalPages) val = totalPages;
+              
+              const urlParams = new URLSearchParams(window.location.search);
+              urlParams.set('page', val);
+              window.location.href = '/?' + urlParams.toString();
+            }
           };
 
           // Ejecutar chequeo inicial
