@@ -12,9 +12,16 @@ const BodyVisualizer = () => {
         <button 
           onclick="window.exportFavorites()"
           id="export-btn"
+          class="hidden px-4 py-2 bg-zinc-800 text-zinc-100 border border-zinc-700 rounded-full font-bold text-sm hover:bg-zinc-700 transition-all shadow-lg active:scale-95"
+        >
+          Export
+        </button>
+        <button 
+          onclick="window.toggleFavoritesModal(true)"
+          id="favorites-btn"
           class="hidden px-4 py-2 bg-zinc-100 text-black rounded-full font-bold text-sm hover:bg-white transition-all shadow-lg shadow-white/5 active:scale-95"
         >
-          Export Favorites (0)
+          View Favorites (0)
         </button>
       </div>
       <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 w-full">
@@ -253,6 +260,34 @@ Home.get('/', async (c) => {
           </footer>
         </main>
 
+        {/* Favorites Modal */}
+        <div id="favorites-modal" class="fixed inset-0 z-[100] hidden">
+          <div onclick="window.toggleFavoritesModal(false)" class="absolute inset-0 bg-black/80 backdrop-blur-sm"></div>
+          <div class="absolute right-0 top-0 bottom-0 w-full max-w-md bg-zinc-950 border-l border-zinc-800 shadow-2xl flex flex-col transform transition-transform duration-300 translate-x-full" id="favorites-panel">
+            <div class="p-6 border-b border-zinc-900 flex justify-between items-center">
+              <h2 class="text-xl font-bold text-white">Your Favorites</h2>
+              <button onclick="window.toggleFavoritesModal(false)" class="text-zinc-500 hover:text-white transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
+            </div>
+            <div id="favorites-list" class="flex-grow overflow-y-auto p-6 space-y-4">
+              {/* Favs will be injected here */}
+              <div class="text-center py-10">
+                <p class="text-zinc-500">No favorites yet.</p>
+              </div>
+            </div>
+            <div class="p-6 border-t border-zinc-900 bg-zinc-950/50">
+              <button 
+                onclick="window.exportFavorites()"
+                class="w-full py-3 bg-zinc-100 text-black rounded-xl font-bold hover:bg-white transition-all active:scale-95 flex items-center justify-center space-x-2"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
+                <span>Export Routine</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
         <script dangerouslySetInnerHTML={{ __html: `
           let page = 1;
           const limit = ${limit};
@@ -262,18 +297,61 @@ Home.get('/', async (c) => {
           let favorites = JSON.parse(localStorage.getItem('exercisedb_favs') || '{}');
 
           const updateExportButton = () => {
-            const btn = document.getElementById('export-btn');
+            const exportBtn = document.getElementById('export-btn');
+            const favBtn = document.getElementById('favorites-btn');
             const count = Object.keys(favorites).length;
+            
             if (count > 0) {
-              btn.classList.remove('hidden');
-              btn.innerText = \`Export Favorites (\${count})\`;
+              exportBtn.classList.remove('hidden');
+              favBtn.classList.remove('hidden');
+              favBtn.innerText = 'View Favorites (' + count + ')';
             } else {
-              btn.classList.add('hidden');
+              exportBtn.classList.add('hidden');
+              favBtn.classList.add('hidden');
+            }
+          };
+
+          const renderFavoritesList = () => {
+            const list = document.getElementById('favorites-list');
+            const favs = Object.values(favorites);
+            
+            if (favs.length === 0) {
+              list.innerHTML = '<div class="text-center py-10"><p class="text-zinc-500">No favorites yet.</p></div>';
+              return;
+            }
+
+            list.innerHTML = favs.map(ex => (
+              '<div class="flex items-center space-x-4 p-3 bg-zinc-900/50 rounded-2xl border border-zinc-900 group">' +
+                '<img src="' + ex.gifUrl + '" class="w-16 h-16 rounded-lg object-cover bg-zinc-800" />' +
+                '<div class="flex-grow min-w-0">' +
+                  '<h4 class="text-white font-bold text-sm capitalize truncate">' + ex.name + '</h4>' +
+                  '<p class="text-zinc-500 text-[10px] uppercase font-bold tracking-wider">' + (ex.targetMuscles[0] || '') + '</p>' +
+                '</div>' +
+                '<button ' +
+                  'onclick="window.toggleFavorite(\\'' + ex.exerciseId + '\\', null)" ' +
+                  'class="p-2 text-zinc-600 hover:text-red-500 transition-colors"' +
+                '>' +
+                  '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>' +
+                '</button>' +
+              '</div>'
+            )).join('');
+          };
+
+          window.toggleFavoritesModal = (show) => {
+            const modal = document.getElementById('favorites-modal');
+            const panel = document.getElementById('favorites-panel');
+            if (show) {
+              renderFavoritesList();
+              modal.classList.remove('hidden');
+              setTimeout(() => panel.classList.remove('translate-x-full'), 10);
+            } else {
+              panel.classList.add('translate-x-full');
+              setTimeout(() => modal.classList.add('hidden'), 300);
             }
           };
 
           const updateStarUI = (id) => {
-            const card = document.getElementById(\`exercise-\${id}\`);
+            const card = document.getElementById('exercise-' + id);
             if (!card) return;
             const btn = card.querySelector('.favorite-btn');
             if (favorites[id]) {
@@ -292,6 +370,9 @@ Home.get('/', async (c) => {
             localStorage.setItem('exercisedb_favs', JSON.stringify(favorites));
             updateStarUI(id);
             updateExportButton();
+            if (document.getElementById('favorites-modal').classList.contains('hidden') === false) {
+              renderFavoritesList();
+            }
           };
 
           window.exportFavorites = () => {
